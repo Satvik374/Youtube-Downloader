@@ -1,0 +1,143 @@
+/* Custom styles for YouTube Downloader */
+
+body {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    background: transparent;
+    color: var(--bs-secondary);
+    border-radius: 10px 10px 0 0;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--bs-light);
+}
+
+.nav-tabs .nav-link.active {
+    background: var(--bs-primary);
+    color: white;
+    border: none;
+}
+
+.form-control, .form-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--bs-light);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    color: var(--bs-light);
+}
+
+.form-control::placeholder {
+    color: var(--bs-secondary);
+}
+
+.btn {
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.alert {
+    border: none;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.progress {
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar {
+    border-radius: 15px;
+}
+
+.display-4 {
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.download-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.download-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.file-size {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+/* Loading animation */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Tab content animation */
+.tab-pane {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .card {
+        margin: 0 10px;
+    }
+}
