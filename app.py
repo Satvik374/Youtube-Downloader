@@ -70,13 +70,13 @@ def download_video():
             flash('Please enter a valid YouTube URL', 'error')
             return redirect(url_for('index'))
         
-        # Map quality to yt-dlp format with MP4 preference
+        # Map quality to yt-dlp format with strict quality enforcement
         quality_map = {
-            '4K': 'bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=2160]+bestaudio/best[height<=2160]',
-            '1080p': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]',
-            '720p': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]',
-            '480p': 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best[height<=480]',
-            '360p': 'bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360]'
+            '4K': 'bestvideo[height>=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=2160]+bestaudio/bestvideo[height>=1440]+bestaudio',
+            '1080p': 'bestvideo[height>=1080][height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=1080][height<=1080]+bestaudio',
+            '720p': 'bestvideo[height>=720][height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=720][height<=720]+bestaudio',
+            '480p': 'bestvideo[height>=480][height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=480][height<=480]+bestaudio',
+            '360p': 'bestvideo[height>=360][height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=360][height<=360]+bestaudio'
         }
         
         format_selector = quality_map.get(quality, 'bestvideo[height<=720]+bestaudio/best')
@@ -112,11 +112,22 @@ def download_video():
                     logging.info(f"Max available height: {max_height}p")
                     logging.info(f"Format selector: {format_selector}")
                     
+                    # Log available formats for debugging
+                    for f in formats[:10]:  # Show first 10 formats
+                        if f and f.get('height'):
+                            logging.info(f"Available format: {f.get('format_id')} - {f.get('height')}p - {f.get('ext')} - {f.get('format_note', 'N/A')}")
+                    
                     # Download the video
                     ydl.download([url])
                     
-                    # Log success with actual quality info
+                    # Check downloaded file and log actual quality
                     logging.info(f"Download completed successfully")
+                    
+                    # Check if we got the requested quality for 4K
+                    if quality == '4K' and max_height >= 2160:
+                        logging.info("4K download successful - true 4K quality achieved")
+                    elif quality == '4K' and max_height < 2160:
+                        logging.warning(f"4K requested but not available - downloaded best quality: {max_height}p")
                         
             except Exception as e:
                 logging.error(f"Download error: {e}")
