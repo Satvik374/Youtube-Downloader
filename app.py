@@ -70,28 +70,52 @@ def download_video():
             flash('Please enter a valid YouTube URL', 'error')
             return redirect(url_for('index'))
         
-        # Map quality to yt-dlp format
+        # Map quality to yt-dlp format with better 4K support
         quality_map = {
-            '4K': 'best[height<=2160]',
-            '1080p': 'best[height<=1080]',
-            '720p': 'best[height<=720]',
-            '480p': 'best[height<=480]',
-            '360p': 'best[height<=360]'
+            '4K': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/bestvideo[height<=1440]+bestaudio/best',
+            '1080p': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
+            '720p': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
+            '480p': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best',
+            '360p': 'bestvideo[height<=360]+bestaudio/best[height<=360]/worst'
         }
         
-        format_selector = quality_map.get(quality, 'best[height<=720]')
+        format_selector = quality_map.get(quality, 'bestvideo[height<=720]+bestaudio/best')
         
         ydl_opts = {
             'format': format_selector,
-            'outtmpl': str(DOWNLOADS_DIR / '%(title)s.%(ext)s'),
+            'outtmpl': str(DOWNLOADS_DIR / '%(title)s_%(quality)s.%(ext)s'),
             'progress_hooks': [progress_hook],
             'no_warnings': False,
+            'writeinfojson': False,
+            'writethumbnail': False,
         }
         
         def download_thread():
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    # Get video info first to check available formats
+                    info = ydl.extract_info(url, download=False)
+                    video_title = info.get('title', 'Unknown')
+                    
+                    # Check available qualities
+                    formats = info.get('formats', [])
+                    available_heights = [f.get('height') for f in formats if f.get('height')]
+                    max_height = max(available_heights) if available_heights else 0
+                    
+                    logging.info(f"Video: {video_title}")
+                    logging.info(f"Requested quality: {quality}")
+                    logging.info(f"Max available height: {max_height}p")
+                    logging.info(f"Format selector: {format_selector}")
+                    
+                    # Download the video
                     ydl.download([url])
+                    
+                    # Log success with actual quality info
+                    if quality == '4K' and max_height < 2160:
+                        flash(f'Video downloaded! Note: 4K not available, downloaded best quality ({max_height}p)', 'warning')
+                    else:
+                        flash(f'Video downloaded in {quality} quality!', 'success')
+                        
             except Exception as e:
                 logging.error(f"Download error: {e}")
                 flash(f'Download failed: {str(e)}', 'error')
