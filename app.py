@@ -95,11 +95,11 @@ def download_video():
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     # Get video info first to check available formats
                     info = ydl.extract_info(url, download=False)
-                    video_title = info.get('title', 'Unknown')
+                    video_title = info.get('title', 'Unknown') if info else 'Unknown'
                     
                     # Check available qualities
-                    formats = info.get('formats', [])
-                    available_heights = [f.get('height') for f in formats if f.get('height')]
+                    formats = info.get('formats', []) if info else []
+                    available_heights = [f.get('height') for f in formats if f and f.get('height')]
                     max_height = max(available_heights) if available_heights else 0
                     
                     logging.info(f"Video: {video_title}")
@@ -111,20 +111,16 @@ def download_video():
                     ydl.download([url])
                     
                     # Log success with actual quality info
-                    if quality == '4K' and max_height < 2160:
-                        flash(f'Video downloaded! Note: 4K not available, downloaded best quality ({max_height}p)', 'warning')
-                    else:
-                        flash(f'Video downloaded in {quality} quality!', 'success')
+                    logging.info(f"Download completed successfully")
                         
             except Exception as e:
                 logging.error(f"Download error: {e}")
-                flash(f'Download failed: {str(e)}', 'error')
         
         # Start download in background thread
         thread = threading.Thread(target=download_thread)
         thread.start()
         
-        flash(f'Video download started in {quality} quality!', 'success')
+        flash(f'Video download started in {quality} quality! FFmpeg is now available for high-quality merging.', 'success')
         return redirect(url_for('index'))
         
     except Exception as e:
