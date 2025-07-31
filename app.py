@@ -70,13 +70,13 @@ def download_video():
             flash('Please enter a valid YouTube URL', 'error')
             return redirect(url_for('index'))
         
-        # Map quality to yt-dlp format with better 4K support
+        # Map quality to yt-dlp format with MP4 preference
         quality_map = {
-            '4K': 'bestvideo[height<=2160]+bestaudio/best[height<=2160]/bestvideo[height<=1440]+bestaudio/best',
-            '1080p': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-            '720p': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
-            '480p': 'bestvideo[height<=480]+bestaudio/best[height<=480]/best',
-            '360p': 'bestvideo[height<=360]+bestaudio/best[height<=360]/worst'
+            '4K': 'bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=2160]+bestaudio/best[height<=2160]',
+            '1080p': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]',
+            '720p': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]',
+            '480p': 'bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=480]+bestaudio/best[height<=480]',
+            '360p': 'bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360]'
         }
         
         format_selector = quality_map.get(quality, 'bestvideo[height<=720]+bestaudio/best')
@@ -88,6 +88,11 @@ def download_video():
             'no_warnings': False,
             'writeinfojson': False,
             'writethumbnail': False,
+            'merge_output_format': 'mp4',
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
         }
         
         def download_thread():
