@@ -226,5 +226,33 @@ def download_file(filename):
         flash(f'Error downloading file: {str(e)}', 'error')
         return redirect(url_for('index'))
 
+@app.route('/delete_file/<filename>', methods=['POST'])
+def delete_file(filename):
+    """Delete a downloaded file"""
+    try:
+        file_path = DOWNLOADS_DIR / filename
+        if file_path.exists():
+            file_path.unlink()
+            return jsonify({'success': True, 'message': 'File deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+    except Exception as e:
+        logging.error(f"File deletion error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/clear_downloads', methods=['POST'])
+def clear_downloads():
+    """Clear all downloaded files"""
+    try:
+        deleted_count = 0
+        for file_path in DOWNLOADS_DIR.iterdir():
+            if file_path.is_file() and file_path.name != '.gitkeep':
+                file_path.unlink()
+                deleted_count += 1
+        return jsonify({'success': True, 'message': f'Deleted {deleted_count} files'})
+    except Exception as e:
+        logging.error(f"Clear downloads error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -199,11 +199,11 @@ function refreshDownloads() {
     
     // Show loading state
     downloadsList.innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status">
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary mb-3" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2 text-muted">Loading downloads...</p>
+            <p class="text-muted">Loading downloads...</p>
         </div>
     `;
     
@@ -212,39 +212,166 @@ function refreshDownloads() {
         .then(files => {
             if (files.length === 0) {
                 downloadsList.innerHTML = `
-                    <div class="text-center text-muted">
-                        <i class="fas fa-folder-open fa-2x mb-2"></i>
-                        <p>No downloads yet. Start by downloading a video or audio file above.</p>
+                    <div class="empty-state text-center p-4">
+                        <div class="empty-icon">
+                            <i class="fas fa-cloud-download-alt fa-3x text-muted mb-3"></i>
+                        </div>
+                        <h6 class="text-muted mb-2">No downloads yet</h6>
+                        <p class="text-muted small">Start by downloading a video or audio file above</p>
                     </div>
                 `;
             } else {
-                downloadsList.innerHTML = files.map(file => `
-                    <div class="download-item d-flex justify-content-between align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1">${escapeHtml(file.name)}</h6>
-                            <small class="file-size">${formatFileSize(file.size)}</small>
+                // Sort files by size (largest first - typically newest and highest quality)
+                files.sort((a, b) => b.size - a.size);
+                
+                downloadsList.innerHTML = files.slice(0, 5).map(file => {
+                    const fileName = escapeHtml(file.name);
+                    const isVideo = fileName.includes('.mp4') || fileName.includes('.webm') || fileName.includes('.mkv');
+                    const isAudio = fileName.includes('.mp3') || fileName.includes('.m4a');
+                    const quality = extractQuality(fileName);
+                    const fileExt = fileName.split('.').pop().toUpperCase();
+                    
+                    return `
+                        <div class="download-item d-flex align-items-center">
+                            <div class="file-info">
+                                <div class="file-name">${truncateFileName(fileName)}</div>
+                                <div class="file-meta">
+                                    <span class="file-size">${formatFileSize(file.size)}</span>
+                                    <span class="file-type">${fileExt}</span>
+                                    ${quality ? `<span class="file-quality">${quality}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <a href="/download_file/${encodeURIComponent(file.name)}" 
+                                   class="btn download-btn">
+                                    <i class="fas fa-download me-2"></i>Download
+                                </a>
+                            </div>
                         </div>
-                        <div>
-                            <a href="/download_file/${encodeURIComponent(file.name)}" 
-                               class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-download me-1"></i>Download
-                            </a>
+                    `;
+                }).join('');
+                
+                // Add "Show More" button if there are more files
+                if (files.length > 5) {
+                    downloadsList.innerHTML += `
+                        <div class="text-center p-3 border-top" style="border-color: rgba(255,255,255,0.1) !important;">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="showAllDownloads()">
+                                <i class="fas fa-chevron-down me-1"></i>Show ${files.length - 5} More Files
+                            </button>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }
             }
         })
         .catch(error => {
             console.error('Error loading downloads:', error);
             downloadsList.innerHTML = `
-                <div class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Error loading downloads. Please try again.</p>
+                <div class="text-center text-danger p-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h6 class="text-danger mb-2">Error loading downloads</h6>
+                    <p class="text-muted small mb-3">Please try again</p>
                     <button class="btn btn-outline-secondary btn-sm" onclick="refreshDownloads()">
-                        <i class="fas fa-refresh me-1"></i>Retry
+                        <i class="fas fa-sync-alt me-1"></i>Retry
                     </button>
                 </div>
             `;
+        });
+}
+
+// Extract quality from filename
+function extractQuality(fileName) {
+    if (fileName.includes('4K') || fileName.includes('2160')) return '4K';
+    if (fileName.includes('1080')) return '1080p';
+    if (fileName.includes('720')) return '720p';
+    if (fileName.includes('480')) return '480p';
+    if (fileName.includes('360')) return '360p';
+    return null;
+}
+
+// Truncate long file names
+function truncateFileName(fileName) {
+    if (fileName.length <= 50) return fileName;
+    const ext = fileName.split('.').pop();
+    const name = fileName.replace(`.${ext}`, '');
+    return name.substring(0, 45) + '...' + ext;
+}
+
+// Clear all downloads
+function clearDownloads() {
+    if (confirm('Are you sure you want to clear all downloaded files? This action cannot be undone.')) {
+        fetch('/clear_downloads', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                refreshDownloads();
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error clearing downloads:', error);
+            showAlert('Error clearing downloads', 'error');
+        });
+    }
+}
+
+// Delete individual file
+function deleteFile(filename) {
+    if (confirm('Are you sure you want to delete this file?')) {
+        fetch(`/delete_file/${encodeURIComponent(filename)}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                refreshDownloads();
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting file:', error);
+            showAlert('Error deleting file', 'error');
+        });
+    }
+}
+
+// Show all downloads
+function showAllDownloads() {
+    fetch('/list_downloads')
+        .then(response => response.json())
+        .then(files => {
+            const downloadsList = document.getElementById('downloadsList');
+            files.sort((a, b) => b.size - a.size);
+            
+            downloadsList.innerHTML = files.map(file => {
+                const fileName = escapeHtml(file.name);
+                const quality = extractQuality(fileName);
+                const fileExt = fileName.split('.').pop().toUpperCase();
+                
+                return `
+                    <div class="download-item d-flex align-items-center">
+                        <div class="file-info">
+                            <div class="file-name">${truncateFileName(fileName)}</div>
+                            <div class="file-meta">
+                                <span class="file-size">${formatFileSize(file.size)}</span>
+                                <span class="file-type">${fileExt}</span>
+                                ${quality ? `<span class="file-quality">${quality}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <a href="/download_file/${encodeURIComponent(file.name)}" 
+                               class="btn download-btn">
+                                <i class="fas fa-download me-2"></i>Download
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         });
 }
 

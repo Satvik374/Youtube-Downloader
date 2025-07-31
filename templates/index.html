@@ -154,20 +154,33 @@
         <!-- Downloads List Section -->
         <div class="row mt-4 justify-content-center">
             <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-folder me-2"></i>Downloaded Files
-                        </h5>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshDownloads()">
-                            <i class="fas fa-refresh me-1"></i>Refresh
-                        </button>
+                <div class="card modern-downloads">
+                    <div class="card-header downloads-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">
+                                    <i class="fas fa-download me-2 text-primary"></i>Recent Downloads
+                                </h5>
+                                <small class="text-muted">Latest downloads appear first</small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-light btn-sm" onclick="clearDownloads()">
+                                    <i class="fas fa-trash me-1"></i>Clear All
+                                </button>
+                                <button class="btn btn-primary btn-sm" onclick="refreshDownloads()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div id="downloadsList">
-                            <div class="text-center text-muted">
-                                <i class="fas fa-folder-open fa-2x mb-2"></i>
-                                <p>No downloads yet. Start by downloading a video or audio file above.</p>
+                            <div class="empty-state text-center p-4">
+                                <div class="empty-icon">
+                                    <i class="fas fa-cloud-download-alt fa-3x text-muted mb-3"></i>
+                                </div>
+                                <h6 class="text-muted mb-2">No downloads yet</h6>
+                                <p class="text-muted small">Start by downloading a video or audio file above</p>
                             </div>
                         </div>
                     </div>
