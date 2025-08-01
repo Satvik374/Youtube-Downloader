@@ -1,0 +1,6 @@
+include *.py
+recursive-include templates *
+recursive-include static *
+exclude downloads/*
+exclude __pycache__/*
+exclude *.pyc
