@@ -12,6 +12,17 @@ const mkdir = promisify(fs.mkdir);
 const access = promisify(fs.access);
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve ads.txt file for Google AdSense with proper content type
+  app.get('/ads.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    try {
+      res.sendFile(path.join(process.cwd(), 'ads.txt'));
+    } catch (error) {
+      // Fallback to public directory
+      res.sendFile(path.join(process.cwd(), 'public', 'ads.txt'));
+    }
+  });
   // Get download history
   app.get("/api/downloads", async (req, res) => {
     try {
