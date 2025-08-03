@@ -1,0 +1,15 @@
+# ads.txt for YouTube Downloader Pro
+# Google AdSense
+google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+
+# Instructions for implementation:
+# 1. Replace "pub-XXXXXXXXXXXXXXXXX" with your actual Google AdSense Publisher ID
+# 2. Place this file in the root directory of your website (accessible at yoursite.com/ads.txt)
+# 3. Ensure the file is publicly accessible and returns HTTP 200 status
+# 4. Update the publisher ID in the AdSense integration code as well
+
+# Additional networks can be added here following the same format:
+# domain.com, publisher_id, DIRECT/RESELLER, certification_authority_id
+
+# For more information about ads.txt, visit:
+# https://iabtechlab.com/ads-txt/
