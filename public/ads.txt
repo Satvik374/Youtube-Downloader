@@ -2,11 +2,8 @@
 # This file helps prevent ad fraud by allowing publishers to publicly declare
 # which companies are authorized to sell their ad inventory
 
-# Google AdSense - Replace with your actual Publisher ID
-google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
-
-# Google Ad Manager (if using)
-# google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+# Google AdSense - Your actual Publisher ID
+google.com, pub-9578468690172928, DIRECT, f08c47fec0942fa0
 
 # Additional ad networks can be added below
 # Example formats:
@@ -14,12 +11,11 @@ google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
 # facebook.com, 123456789, DIRECT
 # openx.com, 540123456, RESELLER, 6a698e2ec38604c6
 
-# Instructions for setup:
-# 1. Get your Google AdSense Publisher ID from your AdSense account
-# 2. Replace "pub-XXXXXXXXXXXXXXXXX" with your actual Publisher ID
-# 3. Deploy this file so it's accessible at: yoursite.com/ads.txt
-# 4. Verify the file is publicly accessible (returns HTTP 200)
-# 5. Submit the file URL to your ad networks
+# Instructions for verification:
+# 1. Deploy this file so it's accessible at: yoursite.com/ads.txt
+# 2. Verify the file is publicly accessible (returns HTTP 200)
+# 3. Submit the file URL to your ad networks
+# 4. Wait for Google AdSense to crawl and verify
 
 # Important notes:
 # - Each line represents one authorized seller
