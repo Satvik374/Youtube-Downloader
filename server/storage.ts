@@ -27,6 +27,7 @@ export class MemStorage implements IStorage {
     const download: DownloadHistory = {
       ...insertDownload,
       id,
+      status: insertDownload.status || "completed",
       downloadedAt: new Date(),
     };
     this.downloadHistory.set(id, download);

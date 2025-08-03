@@ -32,16 +32,26 @@ export default function Downloader({ onDownloadComplete }: DownloaderProps) {
       await apiRequest("POST", "/api/downloads", {
         title: result.title,
         url,
-        format: activeTab === "video" ? `MP4 • ${selectedQuality}` : `${selectedFormat.toUpperCase()} • 320kbps`,
-        quality: activeTab === "video" ? selectedQuality : "320kbps",
+        format: activeTab === "video" ? `MP4 • ${selectedQuality}` : `${selectedFormat.toUpperCase()} • High Quality`,
+        quality: activeTab === "video" ? selectedQuality : "High Quality",
         fileSize: result.fileSize,
         thumbnail: result.thumbnail,
         status: "completed",
       });
       
+      // Trigger actual download
+      if (result.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = result.downloadUrl;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
       toast({
-        title: "Download Complete!",
-        description: `${result.title} has been downloaded successfully.`,
+        title: "Download Started!",
+        description: `${result.title} download has started. Check your downloads folder.`,
       });
       
       onDownloadComplete();

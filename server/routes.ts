@@ -3,6 +3,13 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertDownloadHistorySchema } from "@shared/schema";
 import { z } from "zod";
+import ytdl from "ytdl-core";
+import path from "path";
+import fs from "fs";
+import { promisify } from "util";
+
+const mkdir = promisify(fs.mkdir);
+const access = promisify(fs.access);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get download history
@@ -50,29 +57,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simulate download process
+  // Real YouTube download process
   app.post("/api/download", async (req, res) => {
     try {
       const { url, format, quality } = req.body;
       
-      if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
+      if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
         return res.status(400).json({ message: "Invalid YouTube URL" });
       }
 
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validate YouTube URL
+      if (!ytdl.validateURL(url)) {
+        return res.status(400).json({ message: "Invalid YouTube URL format" });
+      }
 
-      // Mock download result
+      // Get video info
+      const info = await ytdl.getInfo(url);
+      const videoDetails = info.videoDetails;
+      
+      // Create downloads directory if it doesn't exist
+      const downloadsDir = path.join(process.cwd(), 'downloads');
+      try {
+        await access(downloadsDir);
+      } catch {
+        await mkdir(downloadsDir, { recursive: true });
+      }
+
+      // Generate filename
+      const sanitizedTitle = videoDetails.title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+      const timestamp = Date.now();
+      
+      let filename: string;
+      let downloadUrl: string;
+      let fileSize: string = "Unknown";
+
+      if (format === 'audio') {
+        // Download audio
+        filename = `${sanitizedTitle}_${timestamp}.mp3`;
+        const audioFormat = ytdl.chooseFormat(info.formats, { 
+          quality: 'highestaudio',
+          filter: 'audioonly'
+        });
+        
+        if (audioFormat && audioFormat.contentLength) {
+          fileSize = (parseInt(audioFormat.contentLength) / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        downloadUrl = `/api/stream/audio/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`;
+      } else {
+        // Download video
+        filename = `${sanitizedTitle}_${timestamp}.mp4`;
+        
+        // Map quality to ytdl format
+        let qualityFilter: string;
+        switch(quality) {
+          case '4k':
+            qualityFilter = '2160p';
+            break;
+          case '1080p':
+            qualityFilter = '1080p';
+            break;
+          case '720p':
+            qualityFilter = '720p';
+            break;
+          case '480p':
+            qualityFilter = '480p';
+            break;
+          case '360p':
+            qualityFilter = '360p';
+            break;
+          default:
+            qualityFilter = 'highest';
+        }
+
+        const videoFormat = ytdl.chooseFormat(info.formats, { 
+          quality: qualityFilter,
+          filter: 'videoandaudio'
+        }) || ytdl.chooseFormat(info.formats, { 
+          quality: 'highest',
+          filter: 'videoandaudio'
+        });
+        
+        if (videoFormat && videoFormat.contentLength) {
+          fileSize = (parseInt(videoFormat.contentLength) / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        downloadUrl = `/api/stream/video/${encodeURIComponent(url)}/${encodeURIComponent(filename)}?quality=${quality}`;
+      }
+
       const result = {
         success: true,
-        title: `Downloaded ${format === 'audio' ? 'Audio' : 'Video'}`,
-        fileSize: format === 'audio' ? '8.5 MB' : '45.2 MB',
-        thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=200&fit=crop',
+        title: videoDetails.title,
+        fileSize,
+        thumbnail: videoDetails.thumbnails[0]?.url || videoDetails.thumbnail?.thumbnails?.[0]?.url,
+        downloadUrl,
+        filename
       };
 
       res.json(result);
     } catch (error) {
-      res.status(500).json({ message: "Download failed" });
+      console.error('Download error:', error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Download failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Stream audio download
+  app.get("/api/stream/audio/:url/:filename", async (req, res) => {
+    try {
+      const url = decodeURIComponent(req.params.url);
+      const filename = decodeURIComponent(req.params.filename);
+
+      if (!ytdl.validateURL(url)) {
+        return res.status(400).json({ message: "Invalid YouTube URL" });
+      }
+
+      const info = await ytdl.getInfo(url);
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      
+      const audioStream = ytdl(url, { 
+        quality: 'highestaudio',
+        filter: 'audioonly'
+      });
+      
+      audioStream.pipe(res);
+    } catch (error) {
+      console.error('Audio streaming error:', error);
+      res.status(500).json({ message: "Audio streaming failed" });
+    }
+  });
+
+  // Stream video download
+  app.get("/api/stream/video/:url/:filename", async (req, res) => {
+    try {
+      const url = decodeURIComponent(req.params.url);
+      const filename = decodeURIComponent(req.params.filename);
+      const quality = req.query.quality as string || 'highest';
+
+      if (!ytdl.validateURL(url)) {
+        return res.status(400).json({ message: "Invalid YouTube URL" });
+      }
+
+      const info = await ytdl.getInfo(url);
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'video/mp4');
+      
+      // Map quality to ytdl format
+      let qualityFilter: string;
+      switch(quality) {
+        case '4k':
+          qualityFilter = '2160p';
+          break;
+        case '1080p':
+          qualityFilter = '1080p';
+          break;
+        case '720p':
+          qualityFilter = '720p';
+          break;
+        case '480p':
+          qualityFilter = '480p';
+          break;
+        case '360p':
+          qualityFilter = '360p';
+          break;
+        default:
+          qualityFilter = 'highest';
+      }
+
+      const videoStream = ytdl(url, { 
+        quality: qualityFilter,
+        filter: 'videoandaudio'
+      });
+      
+      videoStream.pipe(res);
+    } catch (error) {
+      console.error('Video streaming error:', error);
+      res.status(500).json({ message: "Video streaming failed" });
     }
   });
 

@@ -155,6 +155,34 @@ export default function DownloadHistory() {
                     size="sm"
                     variant="ghost"
                     className="text-blue-600 hover:text-blue-800"
+                    onClick={() => {
+                      // Re-download the item by creating a new download request
+                      const format = item.format.toLowerCase().includes('mp4') ? 'video' : 'audio';
+                      const quality = item.quality || (format === 'video' ? '720p' : 'mp3');
+                      
+                      // Trigger download API call
+                      fetch('/api/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          url: item.url,
+                          format,
+                          quality
+                        })
+                      })
+                      .then(res => res.json())
+                      .then(result => {
+                        if (result.downloadUrl) {
+                          const link = document.createElement('a');
+                          link.href = result.downloadUrl;
+                          link.download = result.filename;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }
+                      })
+                      .catch(console.error);
+                    }}
                   >
                     <Download className="h-4 w-4" />
                   </Button>
