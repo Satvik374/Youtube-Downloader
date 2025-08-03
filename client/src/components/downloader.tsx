@@ -107,6 +107,7 @@ export default function Downloader({ onDownloadComplete }: DownloaderProps) {
   };
 
   const qualityOptions = [
+    { value: "4k", label: "4K UHD", description: "Ultra High" },
     { value: "1080p", label: "1080p HD", description: "High Quality" },
     { value: "720p", label: "720p HD", description: "Standard" },
     { value: "480p", label: "480p", description: "Medium" },
@@ -178,7 +179,7 @@ export default function Downloader({ onDownloadComplete }: DownloaderProps) {
         <Tabs value={activeTab}>
           <TabsContent value="video" className="mb-6">
             <Label className="block text-sm font-medium text-gray-700 mb-3">Video Quality</Label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {qualityOptions.map((option) => (
                 <div
                   key={option.value}
