@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertDownloadHistorySchema } from "@shared/schema";
 import { z } from "zod";
-import ytdl from "ytdl-core";
+import ytdl from "@distube/ytdl-core";
 import path from "path";
 import fs from "fs";
 import { promisify } from "util";
@@ -71,36 +71,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid YouTube URL format" });
       }
 
-      // Get video info
-      const info = await ytdl.getInfo(url);
-      const videoDetails = info.videoDetails;
+      // Set agent to avoid detection issues
+      const agent = ytdl.createAgent();
       
-      // Create downloads directory if it doesn't exist
-      const downloadsDir = path.join(process.cwd(), 'downloads');
+      // Get video info with retry mechanism
+      let info;
+      let videoDetails;
+      
       try {
-        await access(downloadsDir);
-      } catch {
-        await mkdir(downloadsDir, { recursive: true });
+        info = await ytdl.getInfo(url, { agent });
+        videoDetails = info.videoDetails;
+      } catch (error) {
+        console.error('First attempt failed, trying without agent:', error);
+        // Fallback without agent
+        info = await ytdl.getInfo(url);
+        videoDetails = info.videoDetails;
       }
-
+      
       // Generate filename
-      const sanitizedTitle = videoDetails.title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+      const sanitizedTitle = videoDetails.title
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 100); // Limit filename length
       const timestamp = Date.now();
       
       let filename: string;
       let downloadUrl: string;
-      let fileSize: string = "Unknown";
+      let fileSize: string = "Calculating...";
 
       if (format === 'audio') {
         // Download audio
         filename = `${sanitizedTitle}_${timestamp}.mp3`;
-        const audioFormat = ytdl.chooseFormat(info.formats, { 
-          quality: 'highestaudio',
-          filter: 'audioonly'
-        });
+        
+        // Find best audio format
+        const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
+        const audioFormat = audioFormats.find(f => f.audioBitrate) || audioFormats[0];
         
         if (audioFormat && audioFormat.contentLength) {
           fileSize = (parseInt(audioFormat.contentLength) / (1024 * 1024)).toFixed(1) + ' MB';
+        } else if (audioFormat && audioFormat.approxDurationMs) {
+          // Estimate size based on duration and bitrate
+          const durationMs = parseInt(audioFormat.approxDurationMs);
+          const bitrate = audioFormat.audioBitrate || 128;
+          const estimatedSize = (durationMs * bitrate * 1000) / (8 * 1024 * 1024);
+          fileSize = estimatedSize.toFixed(1) + ' MB (est.)';
         }
         
         downloadUrl = `/api/stream/audio/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`;
@@ -108,38 +122,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Download video
         filename = `${sanitizedTitle}_${timestamp}.mp4`;
         
-        // Map quality to ytdl format
+        // Map quality to ytdl format with fallbacks
         let qualityFilter: string;
+        let fallbackQualities: string[] = [];
+        
         switch(quality) {
           case '4k':
             qualityFilter = '2160p';
+            fallbackQualities = ['1440p', '1080p', 'highest'];
             break;
           case '1080p':
             qualityFilter = '1080p';
+            fallbackQualities = ['720p', 'highest'];
             break;
           case '720p':
             qualityFilter = '720p';
+            fallbackQualities = ['480p', 'highest'];
             break;
           case '480p':
             qualityFilter = '480p';
+            fallbackQualities = ['360p', 'highest'];
             break;
           case '360p':
             qualityFilter = '360p';
+            fallbackQualities = ['lowest'];
             break;
           default:
             qualityFilter = 'highest';
+            fallbackQualities = [];
         }
 
-        const videoFormat = ytdl.chooseFormat(info.formats, { 
-          quality: qualityFilter,
-          filter: 'videoandaudio'
-        }) || ytdl.chooseFormat(info.formats, { 
-          quality: 'highest',
-          filter: 'videoandaudio'
-        });
+        // Try to find the requested quality, with fallbacks
+        let videoFormat = null;
+        const videoFormats = ytdl.filterFormats(info.formats, 'videoandaudio');
+        
+        // First try exact quality match
+        videoFormat = videoFormats.find(f => f.qualityLabel === qualityFilter);
+        
+        // Try fallback qualities
+        if (!videoFormat && fallbackQualities.length > 0) {
+          for (const fallback of fallbackQualities) {
+            if (fallback === 'highest') {
+              videoFormat = videoFormats.sort((a, b) => (b.height || 0) - (a.height || 0))[0];
+            } else if (fallback === 'lowest') {
+              videoFormat = videoFormats.sort((a, b) => (a.height || 0) - (b.height || 0))[0];
+            } else {
+              videoFormat = videoFormats.find(f => f.qualityLabel === fallback);
+            }
+            if (videoFormat) break;
+          }
+        }
+        
+        // Last resort: get any video format
+        if (!videoFormat) {
+          videoFormat = videoFormats[0];
+        }
         
         if (videoFormat && videoFormat.contentLength) {
           fileSize = (parseInt(videoFormat.contentLength) / (1024 * 1024)).toFixed(1) + ' MB';
+        } else if (videoFormat && videoFormat.approxDurationMs) {
+          // Estimate size based on duration and quality
+          const durationMs = parseInt(videoFormat.approxDurationMs);
+          const height = videoFormat.height || 480;
+          const estimatedMbps = height >= 1080 ? 8 : height >= 720 ? 5 : height >= 480 ? 2.5 : 1;
+          const estimatedSize = (durationMs * estimatedMbps) / (8 * 1000);
+          fileSize = estimatedSize.toFixed(1) + ' MB (est.)';
         }
         
         downloadUrl = `/api/stream/video/${encodeURIComponent(url)}/${encodeURIComponent(filename)}?quality=${quality}`;
@@ -174,20 +221,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid YouTube URL" });
       }
 
-      const info = await ytdl.getInfo(url);
-      
+      // Set proper headers for download
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      // Create agent and stream with better options
+      const agent = ytdl.createAgent();
       
       const audioStream = ytdl(url, { 
         quality: 'highestaudio',
-        filter: 'audioonly'
+        filter: 'audioonly',
+        agent,
+        requestOptions: {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        }
+      });
+      
+      audioStream.on('error', (error) => {
+        console.error('Audio stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Audio streaming failed" });
+        }
       });
       
       audioStream.pipe(res);
     } catch (error) {
       console.error('Audio streaming error:', error);
-      res.status(500).json({ message: "Audio streaming failed" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Audio streaming failed" });
+      }
     }
   });
 
@@ -202,42 +267,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid YouTube URL" });
       }
 
-      const info = await ytdl.getInfo(url);
-      
+      // Set proper headers for download
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Access-Control-Allow-Origin', '*');
       
-      // Map quality to ytdl format
+      // Create agent and get video info
+      const agent = ytdl.createAgent();
+      const info = await ytdl.getInfo(url, { agent });
+      
+      // Map quality to ytdl format with fallbacks
       let qualityFilter: string;
+      let fallbackQualities: string[] = [];
+      
       switch(quality) {
         case '4k':
           qualityFilter = '2160p';
+          fallbackQualities = ['1440p', '1080p', 'highest'];
           break;
         case '1080p':
           qualityFilter = '1080p';
+          fallbackQualities = ['720p', 'highest'];
           break;
         case '720p':
           qualityFilter = '720p';
+          fallbackQualities = ['480p', 'highest'];
           break;
         case '480p':
           qualityFilter = '480p';
+          fallbackQualities = ['360p', 'highest'];
           break;
         case '360p':
           qualityFilter = '360p';
+          fallbackQualities = ['lowest'];
           break;
         default:
           qualityFilter = 'highest';
       }
 
+      // Find the best available format
+      const videoFormats = ytdl.filterFormats(info.formats, 'videoandaudio');
+      let selectedFormat = videoFormats.find(f => f.qualityLabel === qualityFilter);
+      
+      // Try fallback qualities if the exact quality isn't available
+      if (!selectedFormat && fallbackQualities.length > 0) {
+        for (const fallback of fallbackQualities) {
+          if (fallback === 'highest') {
+            selectedFormat = videoFormats.sort((a, b) => (b.height || 0) - (a.height || 0))[0];
+          } else if (fallback === 'lowest') {
+            selectedFormat = videoFormats.sort((a, b) => (a.height || 0) - (b.height || 0))[0];
+          } else {
+            selectedFormat = videoFormats.find(f => f.qualityLabel === fallback);
+          }
+          if (selectedFormat) break;
+        }
+      }
+      
+      // Last resort: get any video format
+      if (!selectedFormat) {
+        selectedFormat = videoFormats[0];
+      }
+
       const videoStream = ytdl(url, { 
-        quality: qualityFilter,
-        filter: 'videoandaudio'
+        format: selectedFormat,
+        agent,
+        requestOptions: {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        }
+      });
+      
+      videoStream.on('error', (error) => {
+        console.error('Video stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Video streaming failed" });
+        }
       });
       
       videoStream.pipe(res);
     } catch (error) {
       console.error('Video streaming error:', error);
-      res.status(500).json({ message: "Video streaming failed" });
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Video streaming failed" });
+      }
     }
   });
 
