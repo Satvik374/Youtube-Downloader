@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader Pro - Fast & Reliable Video Downloads</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'youtube': '#FF0000',
+                        'youtube-dark': '#CC0000',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                        'pulse-slow': 'pulse 3s infinite',
+                        'progress': 'progress 2s ease-in-out',
+                    },
+                    keyframes: {
+                        progress: {
+                            '0%': { width: '0%' },
+                            '100%': { width: '100%' }
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .youtube-gradient {
+            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+        }
+        
+        .download-gradient {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .progress-animation {
+            animation: progress 2s ease-in-out forwards;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+        
+        .input-focus:focus {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    
+    <!-- Header with AdSense Placeholder -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <!-- AdSense Banner Placeholder -->
+            <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-6 text-center">
+                <div class="text-sm opacity-75 mb-2">Advertisement</div>
+                <div class="bg-white bg-opacity-30 rounded h-24 flex items-center justify-center">
+                    <span class="text-white text-opacity-75">Google AdSense Banner (728x90)</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-youtube rounded-lg p-3">
+                        <i class="fab fa-youtube text-3xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">YouTube Downloader Pro</h1>
+                        <p class="text-blue-100">Fast, reliable, and free video downloads</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <div class="bg-white bg-opacity-20 rounded-lg px-4 py-2">
+                        <span class="text-sm">Total Downloads Today</span>
+                        <div class="text-2xl font-bold">12,847</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- @COMPONENT: MainDownloader [url input, format selection, download controls] -->
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- Download Form Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 mb-8 card-hover">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Download YouTube Videos & Audio</h2>
+                    <p class="text-gray-600">Paste your YouTube URL below and choose your preferred format</p>
+                </div>
+                
+                <!-- Tab Selection -->
+                <div class="flex bg-gray-100 rounded-lg p-1 mb-6">
+                    <button id="video-tab" class="tab-active flex-1 py-3 px-6 rounded-md font-medium transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i class="fas fa-video"></i>
+                        <span>Video Download</span>
+                    </button>
+                    <button id="audio-tab" class="flex-1 py-3 px-6 rounded-md font-medium transition-all duration-300 flex items-center justify-center space-x-2 text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-music"></i>
+                        <span>Audio Download</span>
+                    </button>
+                </div>
+
+                <!-- URL Input -->
+                <div class="mb-6">
+                    <label for="youtube-url" class="block text-sm font-medium text-gray-700 mb-2">YouTube Video URL</label>
+                    <div class="relative">
+                        <input 
+                            type="url" 
+                            id="youtube-url" 
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            class="input-focus w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg"
+                            data-mock="true"
+                        />
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-4">
+                            <i class="fab fa-youtube text-youtube text-2xl"></i>
+                        </div>
+                    </div>
+                    <div id="url-validation" class="mt-2 text-sm text-gray-500">
+                        <!-- URL validation feedback will appear here -->
+                    </div>
+                </div>
+
+                <!-- Format Selection -->
+                <div id="video-options" class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Video Quality</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-quality="1080p">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">1080p HD</div>
+                                <div class="text-sm text-gray-500">High Quality</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-quality="720p">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">720p HD</div>
+                                <div class="text-sm text-gray-500">Standard</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-quality="480p">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">480p</div>
+                                <div class="text-sm text-gray-500">Medium</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-quality="360p">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">360p</div>
+                                <div class="text-sm text-gray-500">Low</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="audio-options" class="mb-6 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Audio Format</label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-format="mp3">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">MP3</div>
+                                <div class="text-sm text-gray-500">320 kbps</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-format="wav">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">WAV</div>
+                                <div class="text-sm text-gray-500">Lossless</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200" data-format="flac">
+                            <div class="text-center">
+                                <div class="font-semibold text-gray-800">FLAC</div>
+                                <div class="text-sm text-gray-500">HD Audio</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Button -->
+                <button id="download-btn" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-3">
+                    <i class="fas fa-download text-xl"></i>
+                    <span class="text-lg">Start Download</span>
+                </button>
+
+                <!-- Progress Section (Hidden by default) -->
+                <div id="progress-section" class="mt-8 hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                <span class="font-medium text-blue-800">Downloading...</span>
+                                <span id="progress-text" class="text-blue-600">0%</span>
+                            </div>
+                            <button id="cancel-btn" class="text-red-600 hover:text-red-800 font-medium">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                            <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        
+                        <!-- Download Info -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">Speed:</span>
+                                <span id="download-speed" class="font-medium ml-1">-- KB/s</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Size:</span>
+                                <span id="file-size" class="font-medium ml-1">-- MB</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Time left:</span>
+                                <span id="time-left" class="font-medium ml-1">--:--</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Status:</span>
+                                <span id="download-status" class="font-medium ml-1 text-blue-600">Processing</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: MainDownloader -->
+
+            <!-- AdSense Rectangle Ad -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8 text-center">
+                <div class="text-sm text-gray-500 mb-3">Advertisement</div>
+                <div class="bg-gray-100 rounded h-64 flex items-center justify-center">
+                    <span class="text-gray-400">Google AdSense Rectangle (300x250)</span>
+                </div>
+            </div>
+
+            <!-- @COMPONENT: DownloadHistory [history list, clear all, refresh functionality] -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 flex items-center space-x-3">
+                        <i class="fas fa-history text-blue-600"></i>
+                        <span>Download History</span>
+                    </h3>
+                    <div class="flex space-x-3">
+                        <button id="refresh-history" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center space-x-2">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Refresh</span>
+                        </button>
+                        <button id="clear-history" class="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center space-x-2">
+                            <i class="fas fa-trash"></i>
+                            <span>Clear All</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Items -->
+                <div id="history-container" class="space-y-4">
+                    <!-- @MAP: downloadHistory.map(item => ( -->
+                    <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow duration-200" data-mock="true">
+                        <div class="flex items-center space-x-4">
+                            <!-- A thumbnail of a popular music video with vibrant colors and artistic composition -->
+                            <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=60" alt="Video thumbnail" class="w-16 h-10 object-cover rounded" />
+                            <div>
+                                <h4 class="font-medium text-gray-800" data-bind="item.title">Amazing Song - Official Music Video</h4>
+                                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span data-bind="item.format">MP4 • 1080p</span>
+                                    <span data-bind="item.size">45.2 MB</span>
+                                    <span data-bind="item.date">2 hours ago</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Completed
+                            </span>
+                            <button class="text-blue-600 hover:text-blue-800" data-event="click:redownload">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="text-red-600 hover:text-red-800" data-event="click:deleteItem">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow duration-200" data-mock="true">
+                        <div class="flex items-center space-x-4">
+                            <!-- A thumbnail showing a tech tutorial or educational content with clean modern aesthetics -->
+                            <img src="https://images.unsplash.com/photo-1432888622747-4eb9a8efeb07?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=60" alt="Video thumbnail" class="w-16 h-10 object-cover rounded" />
+                            <div>
+                                <h4 class="font-medium text-gray-800" data-bind="item.title">How to Build a Website - Complete Tutorial</h4>
+                                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span data-bind="item.format">MP3 • 320kbps</span>
+                                    <span data-bind="item.size">8.7 MB</span>
+                                    <span data-bind="item.date">1 day ago</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Completed
+                            </span>
+                            <button class="text-blue-600 hover:text-blue-800" data-event="click:redownload">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="text-red-600 hover:text-red-800" data-event="click:deleteItem">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow duration-200" data-mock="true">
+                        <div class="flex items-center space-x-4">
+                            <!-- A thumbnail of gaming content with dynamic action and bright colors -->
+                            <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=60" alt="Video thumbnail" class="w-16 h-10 object-cover rounded" />
+                            <div>
+                                <h4 class="font-medium text-gray-800" data-bind="item.title">Epic Gaming Moments Compilation</h4>
+                                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                    <span data-bind="item.format">MP4 • 720p</span>
+                                    <span data-bind="item.size">127.5 MB</span>
+                                    <span data-bind="item.date">3 days ago</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Failed
+                            </span>
+                            <button class="text-blue-600 hover:text-blue-800" data-event="click:retry">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            <button class="text-red-600 hover:text-red-800" data-event="click:deleteItem">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-history" class="text-center py-12 hidden">
+                    <i class="fas fa-history text-gray-300 text-6xl mb-4"></i>
+                    <h4 class="text-xl font-medium text-gray-500 mb-2">No Download History</h4>
+                    <p class="text-gray-400">Your downloaded videos and audio will appear here</p>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: DownloadHistory -->
+        </div>
+    </div>
+
+    <!-- Footer with AdSense -->
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="container mx-auto px-4 py-8">
+            <!-- AdSense Footer Banner -->
+            <div class="bg-gray-700 rounded-lg p-4 mb-8 text-center">
+                <div class="text-sm text-gray-400 mb-2">Advertisement</div>
+                <div class="bg-gray-600 rounded h-24 flex items-center justify-center">
+                    <span class="text-gray-400">Google AdSense Banner (728x90)</span>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <h5 class="font-bold text-lg mb-4">YouTube Downloader Pro</h5>
+                    <p class="text-gray-300">The fastest and most reliable YouTube video and audio downloader. Download in HD quality with no limits.</p>
+                </div>
+                <div>
+                    <h5 class="font-bold text-lg mb-4">Features</h5>
+                    <ul class="space-y-2 text-gray-300">
+                        <li>• HD Video Downloads</li>
+                        <li>• Audio Extraction</li>
+                        <li>• Download History</li>
+                        <li>• Multiple Formats</li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="font-bold text-lg mb-4">Legal</h5>
+                    <ul class="space-y-2 text-gray-300">
+                        <li><a href="#" class="hover:text-white">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-white">DMCA</a></li>
+                        <li><a href="#" class="hover:text-white">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 YouTube Downloader Pro. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Tab switching functionality
+        (function() {
+            const videoTab = document.getElementById('video-tab');
+            const audioTab = document.getElementById('audio-tab');
+            const videoOptions = document.getElementById('video-options');
+            const audioOptions = document.getElementById('audio-options');
+
+            videoTab.addEventListener('click', function() {
+                videoTab.classList.add('tab-active');
+                audioTab.classList.remove('tab-active');
+                videoOptions.classList.remove('hidden');
+                audioOptions.classList.add('hidden');
+            });
+
+            audioTab.addEventListener('click', function() {
+                audioTab.classList.add('tab-active');
+                videoTab.classList.remove('tab-active');
+                audioOptions.classList.remove('hidden');
+                videoOptions.classList.add('hidden');
+            });
+        })();
+
+        // Quality/Format selection
+        (function() {
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('[data-quality], [data-format]')) {
+                    const container = e.target.closest('#video-options, #audio-options');
+                    const allOptions = container.querySelectorAll('[data-quality], [data-format]');
+                    
+                    allOptions.forEach(option => {
+                        option.classList.remove('border-blue-500', 'bg-blue-50');
+                        option.classList.add('border-gray-200', 'bg-gray-50');
+                    });
+                    
+                    const selected = e.target.closest('[data-quality], [data-format]');
+                    selected.classList.remove('border-gray-200', 'bg-gray-50');
+                    selected.classList.add('border-blue-500', 'bg-blue-50');
+                }
+            });
+        })();
+
+        // URL validation
+        (function() {
+            const urlInput = document.getElementById('youtube-url');
+            const validation = document.getElementById('url-validation');
+            
+            urlInput.addEventListener('input', function() {
+                const url = this.value;
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    validation.innerHTML = '<i class="fas fa-check-circle text-green-500"></i> <span class="text-green-600">Valid YouTube URL</span>';
+                } else if (url.length > 0) {
+                    validation.innerHTML = '<i class="fas fa-exclamation-triangle text-yellow-500"></i> <span class="text-yellow-600">Please enter a valid YouTube URL</span>';
+                } else {
+                    validation.innerHTML = '';
+                }
+            });
+        })();
+
+        // Download simulation
+        (function() {
+            const downloadBtn = document.getElementById('download-btn');
+            const progressSection = document.getElementById('progress-section');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const downloadSpeed = document.getElementById('download-speed');
+            const fileSize = document.getElementById('file-size');
+            const timeLeft = document.getElementById('time-left');
+            const downloadStatus = document.getElementById('download-status');
+
+            let downloadInterval;
+
+            downloadBtn.addEventListener('click', function() {
+                // TODO: Implement actual download logic with YouTube API
+                
+                const urlInput = document.getElementById('youtube-url');
+                if (!urlInput.value.includes('youtube.com') && !urlInput.value.includes('youtu.be')) {
+                    alert('Please enter a valid YouTube URL');
+                    return;
+                }
+
+                // Start download simulation
+                progressSection.classList.remove('hidden');
+                downloadBtn.disabled = true;
+                downloadBtn.innerHTML = '<i class="fas fa-spinner animate-spin"></i> <span>Processing...</span>';
+                
+                let progress = 0;
+                downloadInterval = setInterval(function() {
+                    progress += Math.random() * 15;
+                    if (progress > 100) progress = 100;
+                    
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = Math.round(progress) + '%';
+                    
+                    // Update download stats (mock data)
+                    downloadSpeed.textContent = Math.round(Math.random() * 1000 + 500) + ' KB/s';
+                    fileSize.textContent = '45.2 MB';
+                    
+                    const timeRemaining = Math.round((100 - progress) / 10);
+                    timeLeft.textContent = timeRemaining > 0 ? timeRemaining + 's' : '0s';
+                    
+                    if (progress >= 100) {
+                        clearInterval(downloadInterval);
+                        downloadStatus.textContent = 'Completed';
+                        downloadStatus.className = 'font-medium ml-1 text-green-600';
+                        
+                        setTimeout(function() {
+                            progressSection.classList.add('hidden');
+                            downloadBtn.disabled = false;
+                            downloadBtn.innerHTML = '<i class="fas fa-download text-xl"></i> <span class="text-lg">Start Download</span>';
+                            
+                            // Add to history (mock)
+                            addToHistory();
+                        }, 2000);
+                    }
+                }, 200);
+            });
+
+            document.getElementById('cancel-btn').addEventListener('click', function() {
+                clearInterval(downloadInterval);
+                progressSection.classList.add('hidden');
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = '<i class="fas fa-download text-xl"></i> <span class="text-lg">Start Download</span>';
+            });
+        })();
+
+        // History management
+        (function() {
+            const historyContainer = document.getElementById('history-container');
+            const emptyHistory = document.getElementById('empty-history');
+            const clearHistoryBtn = document.getElementById('clear-history');
+            const refreshBtn = document.getElementById('refresh-history');
+
+            function addToHistory() {
+                const urlInput = document.getElementById('youtube-url');
+                const activeTab = document.querySelector('.tab-active');
+                const isAudio = activeTab.textContent.includes('Audio');
+                
+                const historyItem = document.createElement('div');
+                historyItem.className = 'bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow duration-200';
+                historyItem.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=60" alt="Video thumbnail" class="w-16 h-10 object-cover rounded" />
+                        <div>
+                            <h4 class="font-medium text-gray-800">Downloaded ${isAudio ? 'Audio' : 'Video'}</h4>
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span>${isAudio ? 'MP3 • 320kbps' : 'MP4 • 1080p'}</span>
+                                <span>${isAudio ? '8.5 MB' : '45.2 MB'}</span>
+                                <span>Just now</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-check-circle mr-1"></i>
+                            Completed
+                        </span>
+                        <button class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="text-red-600 hover:text-red-800 delete-item">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                historyContainer.insertBefore(historyItem, historyContainer.firstChild);
+                emptyHistory.classList.add('hidden');
+                
+                // Add delete functionality
+                historyItem.querySelector('.delete-item').addEventListener('click', function() {
+                    historyItem.remove();
+                    if (historyContainer.children.length === 0) {
+                        emptyHistory.classList.remove('hidden');
+                    }
+                });
+            }
+
+            clearHistoryBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to clear all download history?')) {
+                    historyContainer.innerHTML = '';
+                    emptyHistory.classList.remove('hidden');
+                }
+            });
+
+            refreshBtn.addEventListener('click', function() {
+                // TODO: Implement refresh functionality
+                const icon = refreshBtn.querySelector('i');
+                icon.classList.add('animate-spin');
+                setTimeout(function() {
+                    icon.classList.remove('animate-spin');
+                }, 1000);
+            });
+
+            // Delete individual items
+            historyContainer.addEventListener('click', function(e) {
+                if (e.target.closest('.text-red-600')) {
+                    const item = e.target.closest('.bg-gray-50');
+                    item.remove();
+                    if (historyContainer.children.length === 0) {
+                        emptyHistory.classList.remove('hidden');
+                    }
+                }
+            });
+        })();
+    </script>
+
+    <!-- ads.txt preparation comment -->
+    <!-- 
+    ads.txt file should be placed in the root directory:
+    google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+    
+    AdSense integration placeholders are ready for implementation:
+    1. Header banner (728x90)
+    2. Rectangle ad (300x250) 
+    3. Footer banner (728x90)
+    -->
+</body>
+</html>
